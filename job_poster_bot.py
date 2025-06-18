@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 
 # -------------------------------------------------------------------
-#          بوت إعادة نشر الوظائف - إصدار جاهز للنشر
+#          بوت إعادة نشر الوظائف - إصدار PythonAnywhere
 # -------------------------------------------------------------------
-#  هذا الإصدار آمن للنشر على الاستضافة، حيث يقرأ المعلومات
-#  الحساسة من متغيرات البيئة بدلاً من كتابتها مباشرة.
+#  هذا الإصدار آمن ومجهز للنشر على PythonAnywhere.
 # -------------------------------------------------------------------
 
 import logging
@@ -15,16 +14,20 @@ import sys
 from datetime import timedelta, datetime
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+from dotenv import load_dotenv
 
-# --- الإعدادات الأساسية (سيتم قراءتها من متغيرات البيئة) ---
+# تحميل متغيرات البيئة من ملف .env
+load_dotenv()
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-ADMIN_USER_ID_STR = os.environ.get("ADMIN_USER_ID")
-TARGET_CHANNEL_ID = os.environ.get("TARGET_CHANNEL_ID")
+# --- الإعدادات الأساسية (سيتم قراءتها من ملف .env) ---
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_USER_ID_STR = os.getenv("ADMIN_USER_ID")
+TARGET_CHANNEL_ID = os.getenv("TARGET_CHANNEL_ID")
 
 # التحقق من وجود المتغيرات الأساسية
 if not all([BOT_TOKEN, ADMIN_USER_ID_STR, TARGET_CHANNEL_ID]):
-    logging.error("خطأ: بعض متغيرات البيئة غير موجودة (BOT_TOKEN, ADMIN_USER_ID, TARGET_CHANNEL_ID).")
+    logging.error("خطأ: بعض متغيرات البيئة غير موجودة في ملف .env.")
     sys.exit(1)
 
 try:
@@ -34,12 +37,8 @@ except ValueError:
     sys.exit(1)
 
 
-# --- إعدادات إضافية (يمكن تركها كما هي) ---
-
-# تحديد مسار قاعدة البيانات بناءً على بيئة التشغيل (للتوافق مع Render)
-DATA_DIR = os.environ.get('RENDER_DISK_PATH', '.')
-JOBS_DB_FILE = os.path.join(DATA_DIR, "scheduled_jobs.json")
-
+# --- إعدادات إضافية ---
+JOBS_DB_FILE = "scheduled_jobs.json"
 RANDOM_HOUR_START = 9
 RANDOM_HOUR_END = 23
 POSTING_DURATION_DAYS = 14
@@ -55,7 +54,6 @@ logger = logging.getLogger(__name__)
 
 def load_jobs():
     """تحميل الوظائف المجدولة من ملف JSON."""
-    logger.info(f"Loading jobs from: {JOBS_DB_FILE}")
     try:
         with open(JOBS_DB_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
@@ -65,7 +63,6 @@ def load_jobs():
 
 def save_jobs(jobs_data):
     """حفظ الوظائف المجدولة في ملف JSON."""
-    logger.info(f"Saving jobs to: {JOBS_DB_FILE}")
     try:
         with open(JOBS_DB_FILE, 'w', encoding='utf-8') as f:
             json.dump(jobs_data, f, ensure_ascii=False, indent=4)
@@ -150,6 +147,7 @@ async def list_active_jobs(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     for job_id, job_info in jobs_data.items():
         if job_info.get("status") == "active" and job_info.get("repost_schedule"):
             short_id = job_id[:6]
+            
             schedule_list = job_info["repost_schedule"]
             schedule_display_list = [f"- {dt}" for dt in schedule_list]
             schedule_text = "\n".join(schedule_display_list)
